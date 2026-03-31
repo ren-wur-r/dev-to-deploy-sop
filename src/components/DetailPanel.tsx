@@ -4,6 +4,7 @@ import type {
   Tab,
   TabContent,
   Step,
+  StepDetail,
   Branch,
   CommitType,
   DockerStep,
@@ -23,20 +24,70 @@ function Badge({ label }: { label: string }) {
   return <span className="b">{label}</span>
 }
 
+function StepDetailPanel({ detail }: { detail: StepDetail }) {
+  return (
+    <div className="step-detail-panel">
+      {detail.sections.map((sec) => (
+        <div key={sec.heading} style={{ marginBottom: 12 }}>
+          <strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{sec.heading}</strong>
+          <ul style={{ listStyle: 'none', margin: 0, fontSize: 12, color: '#666' }}>
+            {sec.items.map((item) => (
+              <li key={item} style={{ padding: '2px 0 2px 12px', position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 0 }}>-</span> {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {detail.autoTable && (
+        <div style={{ marginTop: 16 }}>
+          <strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>自動化驗收分工</strong>
+          <table className="tbl">
+            <thead><tr><th>驗收類型</th><th>執行者</th><th>方式</th></tr></thead>
+            <tbody>
+              {detail.autoTable.map((row) => (
+                <tr key={row.type}>
+                  <td>{row.type}</td>
+                  <td><span className="b">{row.who}</span></td>
+                  <td>{row.how}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {detail.notes && (
+        <div className="note" style={{ marginTop: 12 }}>
+          {detail.notes.map((n, i) => (
+            <div key={i} style={{ fontSize: 12, color: '#666', padding: '2px 0' }}>{n}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StepFlow({ steps }: { steps: Step[] }) {
+  const [expandedStep, setExpandedStep] = useState<number | null>(null)
   return (
     <div className="steps">
       {steps.map((step, i) => (
         <div className="st" key={i}>
           {i < steps.length - 1 && <div className="st-line" />}
           <div>
-            <h4>
+            <h4
+              style={step.detail ? { cursor: 'pointer' } : undefined}
+              onClick={step.detail ? () => setExpandedStep(expandedStep === i ? null : i) : undefined}
+            >
               {step.title}
               {step.badges.map((b) => (
                 <Badge key={b} label={b} />
               ))}
             </h4>
             {step.desc && <p>{step.desc}</p>}
+            {step.detail && expandedStep === i && (
+              <StepDetailPanel detail={step.detail} />
+            )}
           </div>
         </div>
       ))}

@@ -1,9 +1,16 @@
 export type Badge = string
 
+export type StepDetail = {
+  sections: { heading: string; items: string[] }[]
+  autoTable?: { type: string; who: string; how: string }[]
+  notes?: string[]
+}
+
 export type Step = {
   title: string
   badges: Badge[]
   desc?: string
+  detail?: StepDetail
 }
 
 export type Branch = {
@@ -302,7 +309,30 @@ export const stages: Stage[] = [
             { title: 'develop → staging MR', badges: ['RD'], desc: '確認 CHANGELOG 更新，Reviewer 核准後合併' },
             { title: '自動部署', badges: ['自動'], desc: 'Build → Push → Deploy → Health Check（失敗自動回滾）' },
             { title: 'DAST 掃描', badges: ['MIS'], desc: '獨立 Scan Domain 執行動態安全掃描（如需要）' },
-            { title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off' },
+            {
+              title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off（點擊查看驗收範例）',
+              detail: {
+                sections: [
+                  { heading: '核心功能', items: ['登入 / 登出正常', '會員註冊流程完整', '會員資料編輯可儲存', '密碼重設信件可收到'] },
+                  { heading: 'API', items: ['GET /api/users 回傳正確', 'POST /api/users 建立成功', '錯誤情境回傳正確 HTTP status'] },
+                  { heading: '權限', items: ['一般使用者無法存取 /admin', '未登入無法存取受保護頁面'] },
+                  { heading: '相容性', items: ['Chrome 正常', '手機版面正常'] },
+                  { heading: '本次變更特定項目', items: ['依 CHANGELOG 逐項驗證'] },
+                ],
+                autoTable: [
+                  { type: 'API 功能正確性', who: 'Claude Code', how: '自動寫測試 + 執行' },
+                  { type: '權限控制', who: 'Claude Code', how: '自動測試各角色存取' },
+                  { type: '表單流程', who: 'Claude Code', how: 'Playwright 自動操作' },
+                  { type: '畫面 / UX', who: 'RD', how: '人眼確認' },
+                  { type: '效能', who: 'Claude Code', how: 'k6 / Lighthouse' },
+                ],
+                notes: [
+                  'Claude Code 可自動讀取 CHANGELOG / MR 描述，產生測試案例並執行',
+                  'Stage 環境需可從開發機存取',
+                  '畫面相關驗收仍需 RD 人眼確認',
+                ],
+              },
+            },
           ],
         },
       },
