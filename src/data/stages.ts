@@ -376,7 +376,7 @@ export const stages: Stage[] = [
             { title: '開通存取權限', badges: ['MIS'], desc: '技服存取測試環境（HTTP/API/SSH），嚴禁開通正式環境' },
             { title: '測試計畫確認', badges: ['技服', 'RD'], desc: '技服提供計畫書，RD 審閱補充風險點' },
             { title: '執行滲透測試', badges: ['技服'], desc: 'OWASP Top 10 + DDoS 模擬，弱點即時記錄' },
-            { title: '弱點報告', badges: ['技服'], desc: '3 個工作天內產出，依嚴重度分級' },
+            { title: '弱點報告', badges: ['技服'], desc: '產出滲透測試報告，依嚴重度分級' },
             { title: '修復與複測', badges: ['RD', '技服'], desc: 'Critical > High 優先修復，重跑 CI，技服複測。重複直到無 Critical/High' },
             { title: '環境還原', badges: ['MIS'], desc: '快照還原、驗證服務正常、回收技服存取權限' },
           ],
