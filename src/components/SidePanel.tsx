@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { rulesData, painPointsData, appendixData } from '../data/panels'
+import { painPointsData, appendixData } from '../data/panels'
 import type { PainPointSection, AppendixSection } from '../data/panels'
 
 type PanelId = 'rules' | 'pain' | 'appendix' | null
@@ -33,27 +33,6 @@ function CollapsibleSection({
   )
 }
 
-function RulesPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <div className={`rules-panel open`} id="rulesPanel">
-      <div className="rules-panel-header">
-        <h3>關鍵規則</h3>
-        <button className="rules-panel-close" onClick={onClose}>
-          x
-        </button>
-      </div>
-      <div className="rules-panel-body">
-        {rulesData.map((rule) => (
-          <div className="rules-panel-item" key={rule.title}>
-            <strong>{rule.title}</strong>
-            <br />
-            <span className="rules-panel-item-sub">{rule.desc}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function PainSection({ section }: { section: PainPointSection }) {
   if (section.kind === 'items') {
@@ -272,7 +251,7 @@ function AppendixPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="rules-panel open" id="appendixPanel">
       <div className="rules-panel-header">
-        <h3>關鍵規則</h3>
+        <h3>大原則</h3>
         <button className="rules-panel-close" onClick={onClose}>
           x
         </button>
@@ -292,21 +271,15 @@ export default function SidePanel({ activePanel, onToggle, onClose }: Props) {
       <div className="side-toggles">
         <div
           className="side-toggle"
-          onClick={() => onToggle(activePanel === 'rules' ? null : 'rules')}
+          onClick={() => onToggle(activePanel === 'appendix' ? null : 'appendix')}
         >
-          關鍵規則
+          大原則
         </div>
         <div
           className="side-toggle"
           onClick={() => onToggle(activePanel === 'pain' ? null : 'pain')}
         >
           現況痛點
-        </div>
-        <div
-          className="side-toggle"
-          onClick={() => onToggle(activePanel === 'appendix' ? null : 'appendix')}
-        >
-          關鍵規則
         </div>
       </div>
 
@@ -315,7 +288,6 @@ export default function SidePanel({ activePanel, onToggle, onClose }: Props) {
         onClick={onClose}
       />
 
-      {activePanel === 'rules' && <RulesPanel onClose={onClose} />}
       {activePanel === 'pain' && <PainPanel onClose={onClose} />}
       {activePanel === 'appendix' && <AppendixPanel onClose={onClose} />}
     </>
