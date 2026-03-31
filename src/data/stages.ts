@@ -280,9 +280,9 @@ export const stages: Stage[] = [
   },
   {
     id: 'ci',
-    title: 'CI Pipeline',
-    owner: ['自動化'],
-    note: 'Pipeline 在內網 Self-hosted Runner 上執行，push 後自動觸發。',
+    title: 'CI + 自動部署',
+    owner: ['自動化', 'RD'],
+    note: 'Pipeline 在內網 Self-hosted Runner 上執行，push 後自動觸發。測試環境與 Stage 皆由 Runner 自動部署。',
     tabs: [
       {
         id: 'ci-stages',
@@ -301,70 +301,43 @@ export const stages: Stage[] = [
         },
       },
       {
-        id: 'ci-runner',
-        label: '執行環境',
+        id: 'ci-deploy',
+        label: '部署環境',
         content: {
           kind: 'steps',
           steps: [
             {
-              title: 'Self-hosted Runner 架構', badges: ['MIS', 'RD'],
-              desc: '在內網 VM 安裝 GitHub Actions Runner，主動向 GitHub poll 任務，不需開 inbound port',
+              title: '各環境部署方式', badges: ['自動', 'MIS'],
+              desc: '測試環境與 Stage 由 Runner 自動部署，Production 由 MIS 手動部署',
               detail: {
-                sections: [
-                  { heading: '運作方式', items: [
-                    'RD push code 到 GitHub',
-                    'GitHub Actions 產生 job',
-                    '內網 Runner 主動 poll 取得 job（Outbound 443）',
-                    'Runner 在內網執行：build / test / migrate / deploy',
-                    '結果回報到 GitHub Actions 頁面',
-                  ]},
-                  { heading: 'MIS 負責', items: [
-                    '準備一台內網 VM 安裝 Runner（最低 2CPU / 4GB RAM）',
-                    '安裝 Docker（Runner 需要用來 build Image）',
-                    '確保 VM 可 outbound 到 github.com:443',
-                    '確保 VM 可存取內網的 Stage / Prod 環境',
-                    '維護 Runner 服務運行',
-                  ]},
-                  { heading: 'RD 負責', items: [
-                    '撰寫 .github/workflows/*.yml 定義 Pipeline',
-                    '在 workflow 中指定 runs-on: self-hosted',
-                    'DB Migration 腳本納入 Pipeline 步驟',
-                    '環境變數透過 GitHub Secrets 或 .env 管理',
-                  ]},
-                ],
                 autoTable: [
-                  { type: 'Runner 安裝', who: 'MIS', how: '在內網 VM 執行 GitHub 提供的安裝腳本' },
-                  { type: 'Runner 註冊', who: 'MIS', how: '將 Runner 註冊到 GitHub repo 或 org' },
-                  { type: 'Workflow 撰寫', who: 'RD', how: '定義 CI/CD Pipeline YAML' },
-                  { type: 'Pipeline 維護', who: 'RD', how: '新增 / 修改 Pipeline 步驟' },
-                  { type: 'Runner 維運', who: 'MIS', how: '確保 Runner 服務持續運行、更新版本' },
+                  { type: '測試環境', who: 'Runner 自動', how: 'push to develop 觸發' },
+                  { type: 'Stage', who: 'Runner 自動', how: 'MR merge to staging 觸發' },
+                  { type: 'Production', who: 'MIS 手動', how: 'RD 交付 Image + YAML' },
+                ],
+                sections: [
+                  { heading: '測試環境流程', items: [
+                    'RD push to develop',
+                    'Runner 自動執行 CI Pipeline（Lint → Test → Build → Scan）',
+                    'Pipeline 通過後自動部署到測試環境',
+                    'DB Migration 自動執行',
+                    'RD 即時在測試環境驗證，發現問題直接改 → 再 push → 自動更新',
+                  ]},
+                  { heading: 'Stage 環境流程', items: [
+                    'RD 從 develop 發 MR 至 staging',
+                    '確認 CHANGELOG 更新，Reviewer 核准後合併',
+                    'Runner 自動執行 CI Pipeline + 部署到 Stage',
+                    'DB Migration 自動執行',
+                    'Health Check 通過後，Stage 環境就緒',
+                    'DAST 掃描（如需要，MIS 在獨立 Scan Domain 執行）',
+                  ]},
                 ],
                 notes: [
-                  '內網不需開 inbound port，Runner 主動向外 poll',
-                  'push 後到 Stage 自動更新，包含 DB migration',
-                  'GitHub Actions 免費額度對 Self-hosted Runner 不計費',
+                  '測試環境和 Stage 跑的是同一套 CI Pipeline，差別在分支和部署目標',
+                  'RD 從開發到 Stage 驗收完全不需要 MIS 介入',
                 ],
               },
             },
-          ],
-        },
-      },
-    ],
-  },
-  {
-    id: 'stage',
-    title: 'Stage 部署',
-    owner: ['MIS', 'RD'],
-    tabs: [
-      {
-        id: 'flow',
-        label: '流程',
-        content: {
-          kind: 'steps',
-          steps: [
-            { title: 'develop → staging MR', badges: ['RD'], desc: '確認 CHANGELOG 更新，Reviewer 核准後合併' },
-            { title: '自動部署', badges: ['自動'], desc: 'Build → Push → Deploy → Health Check（失敗自動回滾）' },
-            { title: 'DAST 掃描', badges: ['MIS'], desc: '獨立 Scan Domain 執行動態安全掃描（如需要）' },
             {
               title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off',
               detail: {
@@ -393,7 +366,56 @@ export const stages: Stage[] = [
         },
       },
       {
-        id: 'checklist',
+        id: 'ci-runner',
+        label: '執行環境',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: 'Self-hosted Runner 架構', badges: ['MIS', 'RD'],
+              desc: '在內網 VM 安裝 GitHub Actions Runner，主動向 GitHub poll 任務，不需開 inbound port',
+              detail: {
+                sections: [
+                  { heading: '運作方式', items: [
+                    'RD push code 到 GitHub',
+                    'GitHub Actions 產生 job',
+                    '內網 Runner 主動 poll 取得 job（Outbound 443）',
+                    'Runner 在內網執行：build / test / migrate / deploy',
+                    '結果回報到 GitHub Actions 頁面',
+                  ]},
+                  { heading: 'MIS 負責', items: [
+                    '準備一台內網 VM 安裝 Runner（最低 2CPU / 4GB RAM）',
+                    '安裝 Docker（Runner 需要用來 build Image）',
+                    '確保 VM 可 outbound 到 github.com:443',
+                    '確保 VM 可存取內網的測試環境與 Stage 環境',
+                    '維護 Runner 服務運行',
+                  ]},
+                  { heading: 'RD 負責', items: [
+                    '撰寫 .github/workflows/*.yml 定義 Pipeline',
+                    '在 workflow 中指定 runs-on: self-hosted',
+                    'DB Migration 腳本納入 Pipeline 步驟',
+                    '環境變數透過 GitHub Secrets 或 .env 管理',
+                  ]},
+                ],
+                autoTable: [
+                  { type: 'Runner 安裝', who: 'MIS', how: '在內網 VM 執行 GitHub 提供的安裝腳本' },
+                  { type: 'Runner 註冊', who: 'MIS', how: '將 Runner 註冊到 GitHub repo 或 org' },
+                  { type: 'Workflow 撰寫', who: 'RD', how: '定義 CI/CD Pipeline YAML' },
+                  { type: 'Pipeline 維護', who: 'RD', how: '新增 / 修改 Pipeline 步驟' },
+                  { type: 'Runner 維運', who: 'MIS', how: '確保 Runner 服務持續運行、更新版本' },
+                ],
+                notes: [
+                  '內網不需開 inbound port，Runner 主動向外 poll',
+                  'push 後自動更新測試環境與 Stage，包含 DB migration',
+                  'GitHub Actions 免費額度對 Self-hosted Runner 不計費',
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'ci-checklist',
         label: '檢核清單',
         content: {
           kind: 'stage-checklist',
