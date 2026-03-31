@@ -166,7 +166,7 @@ export const stages: Stage[] = [
         content: {
           kind: 'git',
           branches: [
-            { name: 'main', color: '#c00', env: 'Production', desc: '禁止直接 push / 需 Reviewer 核准 / RD 建 Tag 觸發 CI build Image' },
+            { name: 'main', color: '#c00', env: 'Production', desc: '禁止直接 push / RD 負責合併與建 Tag / Tag 觸發 CI build Image' },
             { name: 'staging', color: '#090', env: 'Stage', desc: '禁止直接 push / Merge 自動部署至 Stage' },
             { name: 'develop', color: '#06c', env: 'Dev', desc: '允許 push（建議 MR）/ Push 自動建置 Dev Image' },
             { name: 'feature/*', color: '#777', env: '本地', desc: '命名：feature/JIRA-123-desc / 完成後 MR to develop' },
