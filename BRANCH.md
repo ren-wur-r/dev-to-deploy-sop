@@ -1,22 +1,34 @@
-# develop
+# staging
 
-Development integration branch.
+Stage / UAT environment branch.
 
-All feature branches merge here first. This is where individual work gets integrated before going to Stage.
+Merge to this branch triggers automatic deployment to Stage environment. Used for integration testing, security scanning, and UAT acceptance.
 
 ## Rules
 
-- Allow direct push (but MR is recommended)
-- Push triggers automatic Dev Image build
-- All feature/* and bugfix/* branches merge here via MR
+- Direct push is prohibited
+- Requires at least 1 reviewer approval
+- Merge triggers auto-deploy to Stage environment
+- Must pass Health Check after deployment
 
 ## Flow
 
 ```
-feature/JIRA-123-desc --> MR --> develop --> MR --> staging
+develop --> MR --> staging --> auto-deploy to Stage --> UAT --> MR --> main
 ```
 
 ## Who
 
-- RD: push code, create MR
+- RD: create MR from develop, execute UAT
+- MIS: manage Stage environment, DAST scanning
 - Reviewer: approve MR
+
+## Gate
+
+All items must pass before proceeding to pentest:
+1. CI Pipeline green (Lint / Test / Build / Scan)
+2. Code Review approved
+3. Image pushed to Registry
+4. Stage deployed + Health Check passed
+5. Security Scan: 0 Critical / High
+6. UAT sign-off
