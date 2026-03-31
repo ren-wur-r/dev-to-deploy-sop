@@ -310,7 +310,7 @@ export const stages: Stage[] = [
             { title: '自動部署', badges: ['自動'], desc: 'Build → Push → Deploy → Health Check（失敗自動回滾）' },
             { title: 'DAST 掃描', badges: ['MIS'], desc: '獨立 Scan Domain 執行動態安全掃描（如需要）' },
             {
-              title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off（點擊查看驗收範例）',
+              title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off',
               detail: {
                 sections: [
                   { heading: '核心功能', items: ['登入 / 登出正常', '會員註冊流程完整', '會員資料編輯可儲存', '密碼重設信件可收到'] },

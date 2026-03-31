@@ -75,14 +75,19 @@ function StepFlow({ steps }: { steps: Step[] }) {
         <div className="st" key={i}>
           {i < steps.length - 1 && <div className="st-line" />}
           <div>
-            <h4
-              style={step.detail ? { cursor: 'pointer' } : undefined}
-              onClick={step.detail ? () => setExpandedStep(expandedStep === i ? null : i) : undefined}
-            >
+            <h4>
               {step.title}
               {step.badges.map((b) => (
                 <Badge key={b} label={b} />
               ))}
+              {step.detail && (
+                <span
+                  className="step-example-btn"
+                  onClick={() => setExpandedStep(expandedStep === i ? null : i)}
+                >
+                  {expandedStep === i ? '收合' : '查看範例'}
+                </span>
+              )}
             </h4>
             {step.desc && <p>{step.desc}</p>}
             {step.detail && expandedStep === i && (
