@@ -1,22 +1,29 @@
-# develop
+# bugfix/*
 
-Development integration branch.
+Bug fix branch. Same rules as feature/*, but for fixing non-critical bugs found during development or testing.
 
-All feature branches merge here first. This is where individual work gets integrated before going to Stage.
+## Naming
+
+```
+bugfix/<TASK-ID>-<short-description>
+```
+
+Examples:
+- `bugfix/SOP-002-fix-session-timeout`
+- `bugfix/SOP-033-fix-csv-export-encoding`
 
 ## Rules
 
-- Allow direct push (but MR is recommended)
-- Push triggers automatic Dev Image build
-- All feature/* and bugfix/* branches merge here via MR
+- Branch from `develop`
+- Follow Conventional Commits (use `fix` type)
+- When done, create MR to `develop`
 
 ## Flow
 
 ```
-feature/JIRA-123-desc --> MR --> develop --> MR --> staging
+develop --> bugfix/SOP-002-xxx --> commits --> MR to develop
 ```
 
-## Who
+## Note
 
-- RD: push code, create MR
-- Reviewer: approve MR
+This is for non-urgent bugs. For P0/P1 production issues, use `hotfix/*` branch (branches from `main`).
