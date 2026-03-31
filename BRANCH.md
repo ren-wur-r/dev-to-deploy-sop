@@ -1,22 +1,41 @@
-# develop
+# feature/*
 
-Development integration branch.
+Feature development branch. One branch per feature or task.
 
-All feature branches merge here first. This is where individual work gets integrated before going to Stage.
+## Naming
+
+```
+feature/<TASK-ID>-<short-description>
+```
+
+Examples:
+- `feature/SOP-001-add-login-page`
+- `feature/SOP-015-refactor-auth-module`
+- `feature/SOP-042-dashboard-api`
 
 ## Rules
 
-- Allow direct push (but MR is recommended)
-- Push triggers automatic Dev Image build
-- All feature/* and bugfix/* branches merge here via MR
+- Branch from `develop`
+- One feature per branch
+- Follow Conventional Commits for all commits
+- When done, create MR to `develop` and assign reviewer
 
 ## Flow
 
 ```
-feature/JIRA-123-desc --> MR --> develop --> MR --> staging
+develop --> feature/SOP-001-xxx --> commits --> MR to develop
+```
+
+## Commit examples on this branch
+
+```
+feat(auth): add login page layout
+feat(auth): implement form validation
+test(auth): add login form unit tests
+fix(auth): resolve password field not clearing on error
 ```
 
 ## Who
 
-- RD: push code, create MR
-- Reviewer: approve MR
+- RD: create branch, develop, push, create MR
+- Reviewer: review and approve MR
