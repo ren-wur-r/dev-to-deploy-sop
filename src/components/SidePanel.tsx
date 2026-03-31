@@ -251,7 +251,7 @@ function AppendixPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="rules-panel open" id="appendixPanel">
       <div className="rules-panel-header">
-        <h3>大原則</h3>
+        <h3>關鍵規則</h3>
         <button className="rules-panel-close" onClick={onClose}>
           x
         </button>
@@ -273,7 +273,7 @@ export default function SidePanel({ activePanel, onToggle, onClose }: Props) {
           className="side-toggle"
           onClick={() => onToggle(activePanel === 'appendix' ? null : 'appendix')}
         >
-          大原則
+          關鍵規則
         </div>
         <div
           className="side-toggle"
