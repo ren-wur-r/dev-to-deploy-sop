@@ -282,18 +282,74 @@ export const stages: Stage[] = [
     id: 'ci',
     title: 'CI Pipeline',
     owner: ['自動化'],
-    singleContent: {
-      kind: 'ci-table',
-      columns: ['#', '階段', '內容', 'Gate', '失敗'],
-      rows: [
-        { num: '1', stage: 'Lint', content: 'ESLint / Pylint', gate: '0 Error', failure: '阻斷，RD 修復' },
-        { num: '2', stage: 'Unit Test', content: '測試 + 覆蓋率', gate: '>= 80%', failure: '阻斷，RD 修復' },
-        { num: '3', stage: 'Build', content: 'Docker Image 建置', gate: '成功', failure: '阻斷，RD 修復' },
-        { num: '4', stage: 'Security Scan', content: 'SAST + CVE', gate: '無 Critical / High', failure: '阻斷，RD 修復' },
-        { num: '5', stage: 'Push Image', content: '推至 Registry', gate: '成功', failure: '重試 / 通知 MIS' },
-        { num: '6', stage: 'Code Review', content: 'Reviewer 審查', gate: '至少 1 人核准', failure: '退回 RD' },
-      ],
-    },
+    note: 'Pipeline 在內網 Self-hosted Runner 上執行，push 後自動觸發。',
+    tabs: [
+      {
+        id: 'ci-stages',
+        label: 'Pipeline 階段',
+        content: {
+          kind: 'ci-table',
+          columns: ['#', '階段', '內容', 'Gate', '失敗'],
+          rows: [
+            { num: '1', stage: 'Lint', content: 'ESLint / Pylint', gate: '0 Error', failure: '阻斷，RD 修復' },
+            { num: '2', stage: 'Unit Test', content: '測試 + 覆蓋率', gate: '>= 80%', failure: '阻斷，RD 修復' },
+            { num: '3', stage: 'Build', content: 'Docker Image 建置', gate: '成功', failure: '阻斷，RD 修復' },
+            { num: '4', stage: 'Security Scan', content: 'SAST + CVE', gate: '無 Critical / High', failure: '阻斷，RD 修復' },
+            { num: '5', stage: 'Push Image', content: '推至 Registry', gate: '成功', failure: '重試 / 通知 MIS' },
+            { num: '6', stage: 'Code Review', content: 'Reviewer 審查', gate: '至少 1 人核准', failure: '退回 RD' },
+          ],
+        },
+      },
+      {
+        id: 'ci-runner',
+        label: '執行環境',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: 'Self-hosted Runner 架構', badges: ['MIS', 'RD'],
+              desc: '在內網 VM 安裝 GitHub Actions Runner，主動向 GitHub poll 任務，不需開 inbound port',
+              detail: {
+                sections: [
+                  { heading: '運作方式', items: [
+                    'RD push code 到 GitHub',
+                    'GitHub Actions 產生 job',
+                    '內網 Runner 主動 poll 取得 job（Outbound 443）',
+                    'Runner 在內網執行：build / test / migrate / deploy',
+                    '結果回報到 GitHub Actions 頁面',
+                  ]},
+                  { heading: 'MIS 負責', items: [
+                    '準備一台內網 VM 安裝 Runner（最低 2CPU / 4GB RAM）',
+                    '安裝 Docker（Runner 需要用來 build Image）',
+                    '確保 VM 可 outbound 到 github.com:443',
+                    '確保 VM 可存取內網的 Stage / Prod 環境',
+                    '維護 Runner 服務運行',
+                  ]},
+                  { heading: 'RD 負責', items: [
+                    '撰寫 .github/workflows/*.yml 定義 Pipeline',
+                    '在 workflow 中指定 runs-on: self-hosted',
+                    'DB Migration 腳本納入 Pipeline 步驟',
+                    '環境變數透過 GitHub Secrets 或 .env 管理',
+                  ]},
+                ],
+                autoTable: [
+                  { type: 'Runner 安裝', who: 'MIS', how: '在內網 VM 執行 GitHub 提供的安裝腳本' },
+                  { type: 'Runner 註冊', who: 'MIS', how: '將 Runner 註冊到 GitHub repo 或 org' },
+                  { type: 'Workflow 撰寫', who: 'RD', how: '定義 CI/CD Pipeline YAML' },
+                  { type: 'Pipeline 維護', who: 'RD', how: '新增 / 修改 Pipeline 步驟' },
+                  { type: 'Runner 維運', who: 'MIS', how: '確保 Runner 服務持續運行、更新版本' },
+                ],
+                notes: [
+                  '內網不需開 inbound port，Runner 主動向外 poll',
+                  'push 後到 Stage 自動更新，包含 DB migration',
+                  'GitHub Actions 免費額度對 Self-hosted Runner 不計費',
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
   },
   {
     id: 'stage',
