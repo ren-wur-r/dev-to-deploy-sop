@@ -32,8 +32,8 @@ function StepDetailPanel({ detail }: { detail: StepDetail }) {
           <strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{sec.heading}</strong>
           <ul style={{ listStyle: 'none', margin: 0, fontSize: 12, color: '#666' }}>
             {sec.items.map((item) => (
-              <li key={item} style={{ padding: '2px 0 2px 12px', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 0 }}>-</span> {item}
+              <li key={item} style={{ padding: '3px 0 3px 24px', position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 0, color: '#bbb', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>[ ]</span>{item}
               </li>
             ))}
           </ul>
