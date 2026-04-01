@@ -244,6 +244,36 @@ function AppendixSectionComponent({ section }: { section: AppendixSection }) {
     )
   }
 
+  if (section.kind === 'port-mgmt') {
+    return (
+      <CollapsibleSection heading={section.heading}>
+        <p style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>{section.note}</p>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>管理規則</div>
+        <ul style={{ listStyle: 'none', margin: '0 0 12px', fontSize: 12, color: '#666' }}>
+          {section.rules.map((rule) => (
+            <li key={rule} style={{ padding: '3px 0 3px 14px', position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 0 }}>-</span>{rule}
+            </li>
+          ))}
+        </ul>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Port 對照表（範例）</div>
+        <table className="tbl">
+          <thead><tr><th>系統</th><th>環境</th><th>Port</th><th>配發</th></tr></thead>
+          <tbody>
+            {section.rows.map((row, i) => (
+              <tr key={i}>
+                <td>{row.system}</td>
+                <td>{row.env}</td>
+                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{row.port}</td>
+                <td><span className="b">{row.assignedBy}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CollapsibleSection>
+    )
+  }
+
   return null
 }
 

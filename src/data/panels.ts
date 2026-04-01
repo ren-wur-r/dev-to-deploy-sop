@@ -53,11 +53,19 @@ export type BackupRow = {
   sla: string
 }
 
+export type PortRow = {
+  system: string
+  env: string
+  port: string
+  assignedBy: string
+}
+
 export type AppendixSection =
   | { kind: 'network'; heading: string; note: string; rows: NetworkRow[]; rdHeading: string; rdRows: RdNetworkRow[] }
   | { kind: 'monitoring'; heading: string; rows: MonitoringRow[] }
   | { kind: 'backup'; heading: string; rows: BackupRow[] }
   | { kind: 'legacy-new'; heading: string; legacy: LegacyNewItem; newSys: LegacyNewItem }
+  | { kind: 'port-mgmt'; heading: string; note: string; rules: string[]; rows: PortRow[] }
 
 export const rulesData: RuleItem[] = [
   {
@@ -190,5 +198,25 @@ export const appendixData: AppendixSection[] = [
       heading: '新系統 — 強制標準化',
       items: ['一律走 CI/CD 流程', '統一交付格式（依架構決定）', 'DB 與應用分離', '逐步轉型，避免雙軌擴大'],
     },
+  },
+  {
+    kind: 'port-mgmt',
+    heading: 'Port 號管理',
+    note: '系統越來越多，部署在同一環境時需統一管理 Port 號，避免衝突。',
+    rules: [
+      'Port 號由 MIS 統一配發，RD 不可自行指定',
+      'RD 提交新專案時須填寫 Port 需求申請，由 MIS 分配',
+      'MIS 維護一份 Port 對照表，記錄每個系統在各環境的 Port',
+      '對外服務統一走 80/443，內部 Port 透過 Reverse Proxy 轉發',
+      'Port 對照表更新後須通知所有相關人員',
+    ],
+    rows: [
+      { system: 'SOC Web', env: 'Staging', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+      { system: 'SOC Web', env: 'Production', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+      { system: '報表系統', env: 'Staging', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+      { system: '報表系統', env: 'Production', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+      { system: '弱點掃描', env: 'Staging', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+      { system: '弱點掃描', env: 'Production', port: '（由 MIS 分配）', assignedBy: 'MIS' },
+    ],
   },
 ]

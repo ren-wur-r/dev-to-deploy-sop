@@ -279,13 +279,26 @@ export const stages: Stage[] = [
     ],
   },
   {
-    id: 'ci',
-    title: 'CI + 自動部署',
-    owner: ['自動化', 'RD'],
-    note: 'Pipeline 在內網 Self-hosted Runner 上執行，push 後自動觸發。測試環境與 Stage 皆由 Runner 自動部署。',
+    id: 'dev-ci',
+    title: 'Dev + CI',
+    owner: ['RD', '自動化'],
+    note: 'RD 自由推版，CI Pipeline 自動執行。開發完能馬上測試為最高原則。',
     tabs: [
       {
-        id: 'ci-stages',
+        id: 'dev-flow',
+        label: '流程',
+        content: {
+          kind: 'steps',
+          steps: [
+            { title: 'RD push to develop', badges: ['RD'], desc: '開發分支不受限制，RD 可自由推版' },
+            { title: 'CI Pipeline 自動執行', badges: ['自動'], desc: 'Lint → Unit Test → Build → Security Scan → Push Image（全自動）' },
+            { title: 'Runner 自動部署到 Dev 環境', badges: ['自動'], desc: 'Pipeline 通過後自動部署 + DB Migration + Health Check' },
+            { title: 'RD 即時測試驗證', badges: ['RD'], desc: '在 Dev 環境即時驗證功能，發現問題直接改 → 再 push → 自動更新' },
+          ],
+        },
+      },
+      {
+        id: 'dev-pipeline',
         label: 'Pipeline 階段',
         content: {
           kind: 'ci-table',
@@ -301,79 +314,14 @@ export const stages: Stage[] = [
         },
       },
       {
-        id: 'ci-deploy',
-        label: '部署環境',
-        content: {
-          kind: 'steps',
-          steps: [
-            {
-              title: '各環境部署方式', badges: ['自動', 'MIS'],
-              desc: '測試環境與 Stage 由 Runner 自動部署，Production 由 MIS 手動部署',
-              detail: {
-                autoTable: [
-                  { type: '測試環境', who: 'Runner 自動', how: 'push to develop 觸發' },
-                  { type: 'Stage', who: 'Runner 自動', how: 'MR merge to staging 觸發' },
-                  { type: 'Production', who: 'MIS 手動', how: 'RD 交付 Image + YAML' },
-                ],
-                sections: [
-                  { heading: '測試環境流程', items: [
-                    'RD push to develop',
-                    'Runner 自動執行 CI Pipeline（Lint → Test → Build → Scan）',
-                    'Pipeline 通過後自動部署到測試環境',
-                    'DB Migration 自動執行',
-                    'RD 即時在測試環境驗證，發現問題直接改 → 再 push → 自動更新',
-                  ]},
-                  { heading: 'Stage 環境流程', items: [
-                    'RD 從 develop 發 MR 至 staging',
-                    '確認 CHANGELOG 更新，Reviewer 核准後合併',
-                    'Runner 自動執行 CI Pipeline + 部署到 Stage',
-                    'DB Migration 自動執行',
-                    'Health Check 通過後，Stage 環境就緒',
-                    'DAST 掃描（如需要，MIS 在獨立 Scan Domain 執行）',
-                  ]},
-                ],
-                notes: [
-                  '測試環境和 Stage 跑的是同一套 CI Pipeline，差別在分支和部署目標',
-                  'RD 從開發到 Stage 驗收完全不需要 MIS 介入',
-                ],
-              },
-            },
-            {
-              title: 'UAT 驗收', badges: ['RD'], desc: '功能驗證，通過後簽署 Sign-off',
-              detail: {
-                sections: [
-                  { heading: '核心功能', items: ['登入 / 登出正常', '會員註冊流程完整', '會員資料編輯可儲存', '密碼重設信件可收到'] },
-                  { heading: 'API', items: ['GET /api/users 回傳正確', 'POST /api/users 建立成功', '錯誤情境回傳正確 HTTP status'] },
-                  { heading: '權限', items: ['一般使用者無法存取 /admin', '未登入無法存取受保護頁面'] },
-                  { heading: '相容性', items: ['Chrome 正常', '手機版面正常'] },
-                  { heading: '本次變更特定項目', items: ['依 CHANGELOG 逐項驗證'] },
-                ],
-                autoTable: [
-                  { type: 'API 功能正確性', who: 'Claude Code', how: '自動寫測試 + 執行' },
-                  { type: '權限控制', who: 'Claude Code', how: '自動測試各角色存取' },
-                  { type: '表單流程', who: 'Claude Code', how: 'Playwright 自動操作' },
-                  { type: '畫面 / UX', who: 'RD', how: '人眼確認' },
-                  { type: '效能', who: 'Claude Code', how: 'k6 / Lighthouse' },
-                ],
-                notes: [
-                  'Claude Code 可自動讀取 CHANGELOG / MR 描述，產生測試案例並執行',
-                  'Stage 環境需可從開發機存取',
-                  '畫面相關驗收仍需 RD 人眼確認',
-                ],
-              },
-            },
-          ],
-        },
-      },
-      {
-        id: 'ci-runner',
+        id: 'dev-runner',
         label: '執行環境',
         content: {
           kind: 'steps',
           steps: [
             {
-              title: 'Self-hosted Runner 架構', badges: ['MIS', 'RD'],
-              desc: '在內網 VM 安裝 GitHub Actions Runner，主動向 GitHub poll 任務，不需開 inbound port',
+              title: 'Self-hosted Runner', badges: ['MIS', 'RD'],
+              desc: '內網 VM 安裝 GitHub Actions Runner，主動向 GitHub poll 任務，不需開 inbound port',
               detail: {
                 sections: [
                   { heading: '運作方式', items: [
@@ -387,7 +335,7 @@ export const stages: Stage[] = [
                     '準備一台內網 VM 安裝 Runner（最低 2CPU / 4GB RAM）',
                     '安裝 Docker（Runner 需要用來 build Image）',
                     '確保 VM 可 outbound 到 github.com:443',
-                    '確保 VM 可存取內網的測試環境與 Stage 環境',
+                    '確保 VM 可存取內網的 Dev / Stage 環境',
                     '維護 Runner 服務運行',
                   ]},
                   { heading: 'RD 負責', items: [
@@ -406,7 +354,6 @@ export const stages: Stage[] = [
                 ],
                 notes: [
                   '內網不需開 inbound port，Runner 主動向外 poll',
-                  'push 後自動更新測試環境與 Stage，包含 DB migration',
                   'GitHub Actions 免費額度對 Self-hosted Runner 不計費',
                 ],
               },
@@ -414,8 +361,87 @@ export const stages: Stage[] = [
           ],
         },
       },
+    ],
+  },
+  {
+    id: 'staging',
+    title: 'Staging',
+    owner: ['MIS'],
+    note: 'Staging 環境配置與流程必須與 Production 一致。RD 不可自行部署 Staging，部署權限鎖定由 MIS 負責。',
+    tabs: [
       {
-        id: 'ci-checklist',
+        id: 'staging-flow',
+        label: '流程',
+        content: {
+          kind: 'steps',
+          steps: [
+            { title: 'RD 交付打包檔給 MIS', badges: ['RD'], desc: 'Image + YAML + 環境變數清單 + DB Migration Script' },
+            { title: 'MIS 在 Staging 執行部署', badges: ['MIS'], desc: 'MIS 實際執行一次部署流程，確認無問題後才會以相同流程推上 Production' },
+            { title: 'Health Check', badges: ['MIS'], desc: '部署後驗證服務正常啟動' },
+            { title: 'RD 進行功能測試與 UAT', badges: ['RD'], desc: 'RD 在 Staging 進行實際操作測試與最終畫面驗收',
+              detail: {
+                sections: [
+                  { heading: '核心功能', items: ['登入 / 登出正常', '會員註冊流程完整', '會員資料編輯可儲存', '密碼重設信件可收到'] },
+                  { heading: 'API', items: ['GET /api/users 回傳正確', 'POST /api/users 建立成功', '錯誤情境回傳正確 HTTP status'] },
+                  { heading: '權限', items: ['一般使用者無法存取 /admin', '未登入無法存取受保護頁面'] },
+                  { heading: '相容性', items: ['Chrome 正常', '手機版面正常'] },
+                  { heading: '本次變更特定項目', items: ['依 CHANGELOG 逐項驗證'] },
+                ],
+                autoTable: [
+                  { type: 'API 功能正確性', who: 'Claude Code', how: '自動寫測試 + 執行' },
+                  { type: '權限控制', who: 'Claude Code', how: '自動測試各角色存取' },
+                  { type: '表單流程', who: 'Claude Code', how: 'Playwright 自動操作' },
+                  { type: '畫面 / UX', who: 'RD', how: '人眼確認' },
+                  { type: '效能', who: 'Claude Code', how: 'k6 / Lighthouse' },
+                ],
+                notes: [
+                  'RD 在 Staging 僅負責測試與驗收，不可自行部署',
+                  'Claude Code 可自動讀取 CHANGELOG 產生測試案例',
+                ],
+              },
+            },
+            { title: 'UAT Sign-off', badges: ['RD'], desc: '驗收通過後簽署 Sign-off' },
+          ],
+        },
+      },
+      {
+        id: 'staging-env',
+        label: '環境說明',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '環境定位與比較', badges: ['MIS'],
+              desc: '四種環境的定位、部署規則與權限',
+              detail: {
+                autoTable: [
+                  { type: 'Dev', who: 'RD 自由推版', how: 'push to develop 自動部署，開發測試用' },
+                  { type: 'Staging', who: 'MIS 部署', how: 'RD 交付打包檔，MIS 執行部署，配置與 Prod 一致' },
+                  { type: 'Production', who: 'MIS 部署', how: 'RD 送申請，MIS 審核後以與 Staging 相同流程部署' },
+                  { type: '滲透測試環境', who: 'MIS 建立', how: '比照 Staging 規格切出臨時環境，測試完成後刪除' },
+                  { type: 'Demo（規劃中）', who: 'RD', how: 'UI Demo 環境，讓各部門查看開發進度與介面' },
+                ],
+                sections: [
+                  { heading: 'Staging 重點原則', items: [
+                    '配置與流程必須與 Production 一致',
+                    'RD 不可自行部署 Staging',
+                    'MIS 先在 Staging 驗證部署流程無問題，才以相同流程推上 Production',
+                    'RD 在 Staging 僅負責功能測試與 UAT 驗收',
+                  ]},
+                  { heading: '滲透測試環境', items: [
+                    '為避免干擾 Staging 上的一般功能測試',
+                    '需比照 Staging 規格另切專用臨時環境',
+                    '測試或掃描完成後即可刪除',
+                  ]},
+                ],
+                notes: [],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'staging-checklist',
         label: '檢核清單',
         content: {
           kind: 'stage-checklist',
@@ -424,9 +450,11 @@ export const stages: Stage[] = [
             { num: '1', item: 'CI Pipeline 全綠', owner: ['RD'], standard: '0 Error' },
             { num: '2', item: 'Code Review 核准', owner: ['Reviewer'], standard: 'Approved' },
             { num: '3', item: 'Image 推至 Registry', owner: ['自動'], standard: '可查詢' },
-            { num: '4', item: 'Stage 部署 + Health Check', owner: ['自動'], standard: 'HTTP 200' },
-            { num: '5', item: 'Security Scan 無 Critical/High', owner: ['自動'], standard: '附於 MR' },
-            { num: '6', item: 'UAT 驗收通過', owner: ['RD'], standard: '簽核' },
+            { num: '4', item: 'MIS 在 Staging 部署成功', owner: ['MIS'], standard: '部署流程無異常' },
+            { num: '5', item: 'Health Check 通過', owner: ['MIS'], standard: 'HTTP 200' },
+            { num: '6', item: 'Security Scan 無 Critical/High', owner: ['自動'], standard: '附於 MR' },
+            { num: '7', item: 'RD 功能測試通過', owner: ['RD'], standard: '核心功能正常' },
+            { num: '8', item: 'UAT 驗收通過', owner: ['RD'], standard: '簽核' },
           ],
         },
       },
