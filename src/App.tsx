@@ -33,13 +33,13 @@ export default function App() {
 
       <div className="wrap">
         <h1>BCCS Dev-to-Deploy SOP</h1>
-        <div className="sub">v1.1 | March 2026</div>
+        <div className="sub">v1.2 | April 2026</div>
 
         <Pipeline activeIndex={activeStage} onClick={handlePipelineClick} />
 
         <DetailPanel key={activeStage} stage={stages[activeStage]} />
 
-        <div className="foot">BCCS Dev-to-Deploy SOP v1.1 | March 2026</div>
+        <div className="foot">BCCS Dev-to-Deploy SOP v1.2 | April 2026</div>
       </div>
     </>
   )
