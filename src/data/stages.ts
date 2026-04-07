@@ -173,7 +173,7 @@ export const stages: Stage[] = [
         content: {
           kind: 'git',
           branches: [
-            { name: 'main', color: '#c00', env: 'Production', desc: '禁止直接 push / RD 負責合併與建 Tag / Tag 觸發 CI build Image' },
+            { name: 'main', color: '#c00', env: 'Production', desc: '禁止直接 push / RD 負責合併與建 Tag（版本號由 RD 提供）/ Tag 觸發 CI build Image' },
             { name: 'staging', color: '#090', env: 'Stage', desc: '禁止直接 push / Merge 自動部署至 Stage' },
             { name: 'develop', color: '#06c', env: 'Dev', desc: '允許 push（建議 MR）/ Push 自動建置 Dev Image' },
             { name: 'feature/*', color: '#777', env: '本地', desc: '命名：feature/JIRA-123-desc / 完成後 MR to develop' },
@@ -254,8 +254,8 @@ export const stages: Stage[] = [
           ],
           imageName: 'registry.company.com/<project>/<service>:<version>',
           imageNaming: [
-            { branch: 'develop', tag: ':dev-<sha>', example: ':dev-abc1234' },
-            { branch: 'staging', tag: ':staging-<sha>', example: ':staging-def5678' },
+            { branch: 'develop', tag: ':dev-v<semver>-<sha>', example: ':dev-v1.2.3-abc1234' },
+            { branch: 'staging', tag: ':staging-v<semver>-<sha>', example: ':staging-v1.2.3-def5678' },
             { branch: 'main', tag: ':v<semver>', example: ':v1.2.3' },
           ],
         },
@@ -361,24 +361,267 @@ export const stages: Stage[] = [
           ],
         },
       },
+      {
+        id: 'dev-auto-mis',
+        label: 'MIS 設置',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '目標：讓 RD push code 後自動更新 Dev 環境', badges: ['MIS'],
+              desc: '以下是 MIS 需要完成的一次性設置，設置完成後 RD 即可享有 push-to-deploy 自動化',
+              detail: {
+                sections: [
+                  { heading: '現況痛點', items: [
+                    '前端：RD 手動 npm run build，再遠端替換 IIS 站台目錄的檔案',
+                    '後端：RD 開 Visual Studio 使用「發布」功能，手動部署到遠端 IIS',
+                    '流程耗時且容易出錯，每次改動都要重複操作',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Step 1：安裝 Self-hosted Runner', badges: ['MIS'],
+              desc: '在 Dev 環境 VM 上安裝 GitHub Actions Runner 服務',
+              detail: {
+                sections: [
+                  { heading: '什麼是 Runner', items: [
+                    'Runner 是一支安裝在內網 VM 上的背景服務程式（Windows Service）',
+                    '它會主動向 GitHub poll 取得 CI/CD 任務，不需開 inbound port',
+                    'RD push code 後，Runner 自動抓取任務並在 VM 上執行 build + deploy',
+                  ]},
+                  { heading: '安裝步驟', items: [
+                    '進入 GitHub repo → Settings → Actions → Runners → New self-hosted runner',
+                    'GitHub 會產生一組專屬安裝指令與 token',
+                    '在 Dev VM 上建立目錄：mkdir C:\\actions-runner',
+                    '下載 Runner 安裝包（GitHub 頁面提供下載連結）',
+                    '執行 config.cmd --url https://github.com/org/repo --token XXXXX',
+                    '安裝為 Windows Service：svc.cmd install && svc.cmd start',
+                  ]},
+                  { heading: '驗證', items: [
+                    '安裝完成後在 GitHub repo → Settings → Actions → Runners 可看到 Runner 狀態為 Idle',
+                    'Runner 會自動保持連線，有任務時自動執行',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Step 2：安裝專案所需 SDK', badges: ['MIS'],
+              desc: '在 Runner VM 上安裝前端/後端專案需要的開發工具',
+              detail: {
+                sections: [
+                  { heading: '前端專案', items: [
+                    '安裝 Node.js（版本由 RD 指定，如 v20 LTS）',
+                    '驗證：node -v && npm -v',
+                  ]},
+                  { heading: '後端 .NET 專案', items: [
+                    '安裝 .NET SDK（版本由 RD 指定，如 .NET 8）',
+                    '驗證：dotnet --version',
+                  ]},
+                  { heading: '部署工具', items: [
+                    '安裝 Web Deploy (MSDeploy)（後端 .NET 專案部署使用，建議安裝）',
+                    '或使用 robocopy（Windows 內建，無需額外安裝）',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Step 3：設定權限與 IIS', badges: ['MIS'],
+              desc: '確保 Runner 服務帳號有權限操作 IIS 站台',
+              detail: {
+                sections: [
+                  { heading: '權限設定', items: [
+                    'Runner Windows Service 帳號需對 IIS 站台目錄有寫入權限',
+                    '若使用 MSDeploy：需要 App Pool 的停止/啟動權限',
+                    '建議 Runner 直接安裝在 Dev VM 上，省去遠端部署的複雜度',
+                  ]},
+                  { heading: 'IIS 站台確認', items: [
+                    '確認各站台的實體路徑（如 C:\\inetpub\\wwwroot\\app-name）',
+                    '確認 App Pool 設定（.NET CLR 版本、Pipeline Mode）',
+                    '確認 Binding（hostname、port）',
+                    '可選：啟用 Application Initialization 以支援 Overlapped Recycling（零停機更新）',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Step 4：網路確認', badges: ['MIS'],
+              desc: '確保 Runner VM 的網路連線正常',
+              detail: {
+                sections: [
+                  { heading: '必要條件', items: [
+                    'VM 可 outbound 到 github.com:443（Runner poll 用）',
+                    'VM 可存取 IIS 站台目錄（本機或內網共用路徑）',
+                    '不需開任何 inbound port',
+                  ]},
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'dev-auto-rd',
+        label: 'RD Workflow',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '前端自動部署流程（IIS 靜態站台）', badges: ['RD', '自動'],
+              desc: 'RD 撰寫 GitHub Actions Workflow，push 後自動 build 並部署到 IIS',
+              detail: {
+                sections: [
+                  { heading: 'Workflow 自動執行步驟', items: [
+                    'Runner checkout 程式碼',
+                    '執行 npm ci && npm run build 產出打包檔',
+                    '使用 robocopy 將 dist/ 同步到 IIS 站台實體路徑（如 C:\\inetpub\\wwwroot\\app）',
+                    'IIS Application Pool 自動偵測檔案變更並 recycle（無需手動停機）',
+                  ]},
+                  { heading: 'RD 需撰寫', items: [
+                    '在 repo 建立 .github/workflows/dev-deploy.yml',
+                    '指定 trigger：on push to develop',
+                    '指定 runs-on: self-hosted',
+                    '定義 build step 與 deploy step',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '後端自動部署流程（.NET + IIS）', badges: ['RD', '自動'],
+              desc: 'RD 撰寫 Workflow，push 後自動 dotnet publish 並部署到 IIS，取代 Visual Studio 手動發布',
+              detail: {
+                sections: [
+                  { heading: 'Workflow 自動執行步驟', items: [
+                    'Runner checkout 程式碼',
+                    '執行 dotnet publish -c Release -o ./publish',
+                    '使用 MSDeploy 或 robocopy 將 publish/ 部署到 IIS 站台目錄',
+                    '若使用 MSDeploy：可自動停止/啟動 App Pool，確保檔案不被鎖定',
+                    'Health Check 驗證部署成功',
+                  ]},
+                  { heading: 'RD 需撰寫', items: [
+                    '在 repo 建立 .github/workflows/dev-deploy.yml',
+                    '指定 trigger：on push to develop',
+                    '指定 runs-on: self-hosted',
+                    '定義 dotnet publish step 與 deploy step',
+                    '環境變數透過 GitHub Secrets 管理',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '設定完成後的日常流程', badges: ['RD'],
+              desc: 'MIS 設置完成後，RD 的日常只需要 push code',
+              detail: {
+                sections: [
+                  { heading: '日常操作', items: [
+                    'RD 在 feature/* 分支開發完成',
+                    'MR 合併到 develop（或直接 push to develop）',
+                    'GitHub Actions 自動觸發 → Runner 自動 build → 自動部署到 Dev IIS',
+                    'RD 直接在 Dev 環境驗證，不需做任何部署操作',
+                  ]},
+                ],
+                notes: [
+                  'IIS 不需要移除，問題在於手動流程而非 IIS 本身',
+                  'IIS 支援 Overlapped Recycling，檔案更新後自動 recycle，不需停機',
+                  '未來新系統可評估改用 Docker 容器化部署',
+                ],
+              },
+            },
+          ],
+        },
+      },
     ],
   },
   {
-    id: 'staging',
-    title: 'Staging',
+    id: 'staging-deploy',
+    title: 'Staging 部署',
     owner: ['MIS'],
-    note: 'Staging 環境配置與流程必須與 Production 一致。RD 不可自行部署 Staging，部署權限鎖定由 MIS 負責。',
+    note: 'Staging 部署僅限 MIS 操作。RD 不可自行部署 Staging，部署權限鎖定由 MIS 負責。',
     tabs: [
       {
-        id: 'staging-flow',
+        id: 'staging-deploy-flow',
         label: '流程',
         content: {
           kind: 'steps',
           steps: [
-            { title: 'RD 交付打包檔給 MIS', badges: ['RD'], desc: 'Image + YAML + 環境變數清單 + DB Migration Script' },
+            { title: 'RD 交付打包檔給 MIS', badges: ['RD'], desc: 'Image + YAML + 環境變數清單 + DB Migration Script + 版本號' },
+            { title: 'MIS 確認版本號與交付物', badges: ['MIS'], desc: '核對 RD 提供的版本號與 Image tag 是否一致' },
             { title: 'MIS 在 Staging 執行部署', badges: ['MIS'], desc: 'MIS 實際執行一次部署流程，確認無問題後才會以相同流程推上 Production' },
+            { title: 'DB Migration 執行', badges: ['MIS'], desc: '依 RD 提供的 Migration Script 執行資料庫變更' },
             { title: 'Health Check', badges: ['MIS'], desc: '部署後驗證服務正常啟動' },
-            { title: 'RD 進行功能測試與 UAT', badges: ['RD'], desc: 'RD 在 Staging 進行實際操作測試與最終畫面驗收',
+          ],
+        },
+      },
+      {
+        id: 'staging-env',
+        label: '環境說明',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '環境定位與比較', badges: ['MIS'],
+              desc: '各環境的定位、部署規則與權限',
+              detail: {
+                autoTable: [
+                  { type: 'Dev', who: 'RD 自由推版', how: 'push to develop 自動部署，開發測試用' },
+                  { type: 'Staging', who: 'MIS 部署', how: 'RD 交付打包檔，MIS 執行部署，配置與 Prod 一致' },
+                  { type: 'Production', who: 'MIS 部署', how: 'RD 送申請，MIS 審核後以與 Staging 相同流程部署' },
+                  { type: '滲透測試環境', who: 'MIS 建立', how: '比照 Staging 規格切出臨時環境，測試完成後刪除' },
+                  { type: 'Demo（規劃中）', who: 'RD', how: 'UI Demo 環境，讓各部門查看開發進度與介面' },
+                ],
+                sections: [
+                  { heading: 'Staging 重點原則', items: [
+                    '配置與流程必須與 Production 一致',
+                    'RD 不可自行部署 Staging，所有部署由 MIS 執行',
+                    'MIS 先在 Staging 驗證部署流程無問題，才以相同流程推上 Production',
+                    'Staging DB 定期由 Production 備份還原，確保測試結果與正式環境一致（需評估各專案效益）',
+                    '合規要求：Production 資料庫的客戶敏感資料須去識別化後才可還原至 Staging，須規劃自動去識別化腳本',
+                  ]},
+                  { heading: '滲透測試環境', items: [
+                    '為避免干擾 Staging 上的一般功能測試',
+                    '需比照 Staging 規格另切專用臨時環境',
+                    '測試或掃描完成後即可刪除',
+                  ]},
+                ],
+                notes: [],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'staging-deploy-checklist',
+        label: '檢核清單',
+        content: {
+          kind: 'stage-checklist',
+          columns: ['#', '項目', '負責', '標準'],
+          rows: [
+            { num: '1', item: 'CI Pipeline 全綠', owner: ['RD'], standard: '0 Error' },
+            { num: '2', item: 'Code Review 核准', owner: ['Reviewer'], standard: 'Approved' },
+            { num: '3', item: 'Image 推至 Registry', owner: ['自動'], standard: '可查詢' },
+            { num: '4', item: 'MIS 確認版本號一致', owner: ['MIS'], standard: 'RD 提供版本號與 Image tag 吻合' },
+            { num: '5', item: 'MIS 在 Staging 部署成功', owner: ['MIS'], standard: '部署流程無異常' },
+            { num: '6', item: 'Health Check 通過', owner: ['MIS'], standard: 'HTTP 200' },
+            { num: '7', item: 'Security Scan 無 Critical/High', owner: ['自動'], standard: '附於 MR' },
+            { num: '8', item: 'Staging DB 資料與 Prod 同步（含去識別化）', owner: ['MIS'], standard: '定期執行、敏感資料已去識別化' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'staging-qa',
+    title: 'Staging 驗收',
+    owner: ['RD'],
+    note: 'RD 在 Staging 進行功能測試與 UAT 驗收。驗收通過後簽署 Sign-off，作為上 Production 的前置條件。',
+    tabs: [
+      {
+        id: 'staging-qa-flow',
+        label: '流程',
+        content: {
+          kind: 'steps',
+          steps: [
+            { title: 'RD 進行功能測試', badges: ['RD'], desc: '在 Staging 進行實際操作測試，驗證核心功能正常',
               detail: {
                 sections: [
                   { heading: '核心功能', items: ['登入 / 登出正常', '會員註冊流程完整', '會員資料編輯可儲存', '密碼重設信件可收到'] },
@@ -400,61 +643,21 @@ export const stages: Stage[] = [
                 ],
               },
             },
-            { title: 'UAT Sign-off', badges: ['RD'], desc: '驗收通過後簽署 Sign-off' },
+            { title: 'UAT 驗收', badges: ['RD'], desc: '最終畫面驗收，確認 UI/UX 符合需求' },
+            { title: 'UAT Sign-off', badges: ['RD'], desc: '驗收通過後簽署 Sign-off，作為上 Production 的必要條件' },
           ],
         },
       },
       {
-        id: 'staging-env',
-        label: '環境說明',
-        content: {
-          kind: 'steps',
-          steps: [
-            {
-              title: '環境定位與比較', badges: ['MIS'],
-              desc: '四種環境的定位、部署規則與權限',
-              detail: {
-                autoTable: [
-                  { type: 'Dev', who: 'RD 自由推版', how: 'push to develop 自動部署，開發測試用' },
-                  { type: 'Staging', who: 'MIS 部署', how: 'RD 交付打包檔，MIS 執行部署，配置與 Prod 一致' },
-                  { type: 'Production', who: 'MIS 部署', how: 'RD 送申請，MIS 審核後以與 Staging 相同流程部署' },
-                  { type: '滲透測試環境', who: 'MIS 建立', how: '比照 Staging 規格切出臨時環境，測試完成後刪除' },
-                  { type: 'Demo（規劃中）', who: 'RD', how: 'UI Demo 環境，讓各部門查看開發進度與介面' },
-                ],
-                sections: [
-                  { heading: 'Staging 重點原則', items: [
-                    '配置與流程必須與 Production 一致',
-                    'RD 不可自行部署 Staging',
-                    'MIS 先在 Staging 驗證部署流程無問題，才以相同流程推上 Production',
-                    'RD 在 Staging 僅負責功能測試與 UAT 驗收',
-                  ]},
-                  { heading: '滲透測試環境', items: [
-                    '為避免干擾 Staging 上的一般功能測試',
-                    '需比照 Staging 規格另切專用臨時環境',
-                    '測試或掃描完成後即可刪除',
-                  ]},
-                ],
-                notes: [],
-              },
-            },
-          ],
-        },
-      },
-      {
-        id: 'staging-checklist',
+        id: 'staging-qa-checklist',
         label: '檢核清單',
         content: {
           kind: 'stage-checklist',
           columns: ['#', '項目', '負責', '標準'],
           rows: [
-            { num: '1', item: 'CI Pipeline 全綠', owner: ['RD'], standard: '0 Error' },
-            { num: '2', item: 'Code Review 核准', owner: ['Reviewer'], standard: 'Approved' },
-            { num: '3', item: 'Image 推至 Registry', owner: ['自動'], standard: '可查詢' },
-            { num: '4', item: 'MIS 在 Staging 部署成功', owner: ['MIS'], standard: '部署流程無異常' },
-            { num: '5', item: 'Health Check 通過', owner: ['MIS'], standard: 'HTTP 200' },
-            { num: '6', item: 'Security Scan 無 Critical/High', owner: ['自動'], standard: '附於 MR' },
-            { num: '7', item: 'RD 功能測試通過', owner: ['RD'], standard: '核心功能正常' },
-            { num: '8', item: 'UAT 驗收通過', owner: ['RD'], standard: '簽核' },
+            { num: '1', item: 'RD 功能測試通過', owner: ['RD'], standard: '核心功能正常' },
+            { num: '2', item: 'CHANGELOG 逐項驗證完成', owner: ['RD'], standard: '全部通過' },
+            { num: '3', item: 'UAT 驗收通過', owner: ['RD'], standard: '簽核' },
           ],
         },
       },
@@ -555,7 +758,7 @@ export const stages: Stage[] = [
           kind: 'prod-flow',
           precondition: '前置條件：Stage 檢核全通過 / 滲透測試無 Critical+High / UAT Sign-off / DB Migration 已驗證 / Rollback 計畫已確認',
           steps: [
-            { title: 'RD 合併 MR 至 main 並建立 Release Tag', badges: ['RD'], desc: 'MR 附：Stage 結果、滲透測試報告、Rollback 計畫。合併後建 Tag（v1.2.3）' },
+            { title: 'RD 合併 MR 至 main 並建立 Release Tag', badges: ['RD'], desc: 'MR 附：Stage 結果、滲透測試報告、Rollback 計畫。合併後建 Tag（v1.2.3）。版本號由 RD 提供，MIS 部署時透過版本號二次確認是否與 RD 指定一致' },
             { title: 'CI 自動建置正式版 Image', badges: ['自動'], desc: 'Tag 觸發 Pipeline：Re-build → Re-scan → Push Image :v1.2.3 至 Registry' },
             { title: 'RD 交付部署物給 MIS', badges: ['RD'], desc: '提供：Image tag、YAML、環境變數清單、DB Migration Script、Rollback 計畫' },
             { title: 'MIS 執行部署', badges: ['MIS'], desc: '在 K8s / VM 上拉 Image、設定環境變數、執行 DB Migration、部署、Health Check' },
