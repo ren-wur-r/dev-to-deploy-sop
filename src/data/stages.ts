@@ -271,8 +271,136 @@ export const stages: Stage[] = [
             { num: '2', item: 'docker-compose.yml', desc: '部署配置檔', owner: ['RD', 'MIS'] },
             { num: '3', item: '環境變數清單', desc: '所有需設定的環境變數', owner: ['RD'] },
             { num: '4', item: 'DB Migration', desc: '資料庫結構變更腳本（如有）', owner: ['RD'] },
-            { num: '5', item: 'CHANGELOG', desc: '本次變更記錄', owner: ['RD'] },
-            { num: '6', item: 'Rollback 計畫', desc: '回滾步驟與判斷條件', owner: ['RD', 'MIS'] },
+            { num: '5', item: 'Volume 路徑清單', desc: '列出所有 Volume 的用途、掛載路徑、負責人（如有變更須標注）', owner: ['RD'] },
+            { num: '6', item: 'CHANGELOG', desc: '本次變更記錄', owner: ['RD'] },
+            { num: '7', item: 'Rollback 計畫', desc: '回滾步驟與判斷條件', owner: ['RD', 'MIS'] },
+          ],
+        },
+      },
+      {
+        id: 'volume-migration',
+        label: 'Volume + Migration',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: 'Volume 與自動部署的關係', badges: ['RD', 'MIS'],
+              desc: 'Docker Image 不包含 Volume 內容，自動部署只更新程式碼，Volume 需另外處理',
+              detail: {
+                sections: [
+                  { heading: '核心觀念', items: [
+                    'Volume 負責「資料不消失」-- 容器重建時掛載的資料還在',
+                    'Migration 負責「結構更新」-- 透過 SQL 指令修改 DB schema',
+                    '把 migration script 打包到 Image 裡 ≠ script 被執行了，還需要觸發機制',
+                    '上傳檔案類的 Volume 跟部署無關，各環境各自維護，部署不會也不應該動它',
+                  ]},
+                  { heading: 'Volume 分類', items: [
+                    '自訂 Volume：上傳檔案（圖檔、簡報）、SSL 憑證 -- 各環境獨立維護，不在自動部署範圍',
+                    '預設 Volume：DB 數據檔 -- Named Volume 掛載，容器重建不影響，schema 變更透過 Migration 處理',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'DB Migration 自動化方案比較', badges: ['RD'],
+              desc: '三種方案適用不同環境，建議 Dev 用 Entrypoint、Staging/Prod 用 Pipeline step',
+              detail: {
+                sections: [
+                  { heading: '方案 A：Entrypoint（Dev 環境推薦）', items: [
+                    '容器啟動時先執行 migration，成功後才啟動應用',
+                    '最簡單，Dev 只有一個容器實例不會有 Race Condition',
+                    'RD push 後容器重建自動跑，不需人工介入',
+                  ]},
+                  { heading: '方案 B：CI/CD Pipeline step（Staging / Prod 推薦）', items: [
+                    '在 GitHub Actions workflow 裡部署前先跑 migration',
+                    '最安全：migration 失敗就不會繼續部署，不會推半成品上去',
+                    'MIS 可在 Pipeline log 確認 migration 結果',
+                    '前提：Runner 必須能連到目標環境的 DB',
+                  ]},
+                  { heading: '方案 C：一次性容器', items: [
+                    'docker-compose 裡定義專門跑 migration 的 service，跑完自動退出',
+                    '職責分離最乾淨，但設定較複雜',
+                    '需管理容器啟動順序（depends_on + healthcheck）',
+                  ]},
+                ],
+                autoTable: [
+                  { type: '方案', who: '適用環境', how: '觸發方式' },
+                  { type: 'A. Entrypoint', who: 'Dev', how: '容器啟動時自動執行 migration 再啟動應用' },
+                  { type: 'B. Pipeline step', who: 'Staging / Prod', how: 'GitHub Actions 部署前先跑 migration，失敗則中斷' },
+                  { type: 'C. 一次性容器', who: '皆可（複雜度較高）', how: 'docker-compose 定義獨立 migration service' },
+                ],
+                notes: [
+                  '所有方案的前提：migration script 必須是冪等的（跑過的不重複跑），主流工具皆內建此機制',
+                  'Runner 必須能連到目標環境的 DB（MIS 需確保網路可達 + DB 帳號權限）',
+                ],
+              },
+            },
+            {
+              title: '.NET (Entity Framework Core) 範例', badges: ['RD'],
+              desc: '適用 .NET 後端專案',
+              detail: {
+                sections: [
+                  { heading: 'Entrypoint 做法（Dev）', items: [
+                    '在 Program.cs 應用啟動時加入：var db = scope.ServiceProvider.GetRequiredService<AppDbContext>(); db.Database.Migrate();',
+                    '每次容器啟動自動檢查並執行未套用的 migration',
+                  ]},
+                  { heading: 'Pipeline 做法（Staging / Prod）', items: [
+                    'GitHub Actions step: dotnet ef database update --project ./src/MyApp --connection "$DB_CONNECTION_STRING"',
+                    'DB 連線字串存在 GitHub Secrets，由 MIS 設定',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Node.js (Prisma) 範例', badges: ['RD'],
+              desc: '適用 Node.js + Prisma 後端專案',
+              detail: {
+                sections: [
+                  { heading: 'Entrypoint 做法（Dev）', items: [
+                    'Dockerfile CMD: sh -c "npx prisma migrate deploy && node dist/server.js"',
+                    'prisma migrate deploy 只執行尚未套用的 migration',
+                  ]},
+                  { heading: 'Pipeline 做法（Staging / Prod）', items: [
+                    'GitHub Actions step: npx prisma migrate deploy',
+                    'DATABASE_URL 存在 GitHub Secrets，由 MIS 設定',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Node.js (TypeORM) 範例', badges: ['RD'],
+              desc: '適用 Node.js + TypeORM 後端專案',
+              detail: {
+                sections: [
+                  { heading: 'Entrypoint 做法（Dev）', items: [
+                    'Dockerfile CMD: sh -c "npx typeorm migration:run -d dist/data-source.js && node dist/server.js"',
+                  ]},
+                  { heading: 'Pipeline 做法（Staging / Prod）', items: [
+                    'GitHub Actions step: npx typeorm migration:run -d dist/data-source.js',
+                    'DATABASE_URL 存在 GitHub Secrets，由 MIS 設定',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Volume 管理職責', badges: ['RD', 'MIS'],
+              desc: '各類 Volume 的負責人與處理方式',
+              detail: {
+                sections: [],
+                autoTable: [
+                  { type: 'Volume 類型', who: '誰定義', how: '誰建立/維護' },
+                  { type: 'DB 數據（Named Volume）', who: 'RD（docker-compose.yml）', how: 'MIS（首次建立 + 備份策略）' },
+                  { type: 'DB Migration', who: 'RD（撰寫 migration script）', how: '自動（Entrypoint 或 Pipeline 執行）' },
+                  { type: '上傳檔案（圖檔、簡報）', who: 'RD（定義掛載路徑）', how: 'MIS（建立目錄 + 備份），內容由使用者產生' },
+                  { type: 'SSL 憑證', who: 'MIS', how: 'MIS（掛載於 Reverse Proxy，不放應用容器）' },
+                ],
+                notes: [
+                  '上傳檔案類 Volume 若某次部署需更新（如換一批圖檔），須列在交付物清單由指定人員手動處理',
+                  '各環境的 Volume 內容各自維護，如同被 .gitignore 的環境檔',
+                  'RD 交付物清單需標注本次部署是否有 Volume 相關變更',
+                ],
+              },
+            },
           ],
         },
       },
@@ -524,6 +652,151 @@ export const stages: Stage[] = [
                   'IIS 不需要移除，問題在於手動流程而非 IIS 本身',
                   'IIS 支援 Overlapped Recycling，檔案更新後自動 recycle，不需停機',
                   '未來新系統可評估改用 Docker 容器化部署',
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'dev-deploy-notes',
+        label: '部署注意事項',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: 'DB Migration：script 在 app 容器，DB 在 db 容器', badges: ['RD'],
+              desc: 'CI build 的是 app Image，DB 用官方 Image（postgres/mysql/mssql）不需自己 build',
+              detail: {
+                sections: [
+                  { heading: '運作原理', items: [
+                    'app 容器與 db 容器是分開的（一容器一行程原則）',
+                    'Migration script 打包在 app Image 裡，但透過 DB 連線去執行 SQL 修改 schema',
+                    '跟用 SSMS / pgAdmin 連資料庫下 ALTER TABLE 一樣，只是改成程式自動執行',
+                    '這是業界標準做法，RD 工作量不增加，只需在啟動指令加一行',
+                  ]},
+                  { heading: '各環境建議方案', items: [
+                    'Dev：Entrypoint -- 容器啟動時自動跑 migration 再啟動應用，最簡單',
+                    'Staging / Prod：Pipeline step -- 部署前先跑 migration，失敗就不繼續部署，最安全',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '環境變數 / Secrets 變更', badges: ['RD', 'MIS'],
+              desc: '自動部署只更新程式碼，不會自動同步環境變數',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    '新版本新增了環境變數，但伺服器上的 .env 或 GitHub Secrets 沒同步更新',
+                    '部署後應用啟動但功能異常（缺少必要的設定值）',
+                  ]},
+                  { heading: '解法', items: [
+                    'RD 交付時須附「環境變數異動清單」，標注新增/修改/刪除的變數',
+                    'MIS 收到後手動更新對應環境的設定',
+                    '交付物清單已包含「環境變數清單」項目',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Volume 內容變更（上傳檔案、憑證等）', badges: ['RD', 'MIS'],
+              desc: '上傳檔案類 Volume 不在自動部署範圍，各環境各自維護',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    'Volume 掛載的檔案（使用者上傳的圖檔、SSL 憑證等）不在 Image 裡也不在 Git 裡',
+                    '如同被 .gitignore 的環境檔，各環境必須各自維護',
+                    '自動部署不會也不應該去動這些檔案',
+                  ]},
+                  { heading: '解法', items: [
+                    '部署時不需處理 -- Volume 掛載設定好後，容器重建不影響已有檔案',
+                    '若某次部署確實需要更新 Volume 檔案（如換一批圖檔），須列在交付物清單由指定人員手動處理',
+                    'SSL 憑證放在 Reverse Proxy（Nginx），不放應用容器，由 MIS 管理',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '容器啟動順序', badges: ['RD'],
+              desc: 'app 容器起來了但 DB 還沒 ready，造成連線失敗',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    'docker-compose up 時 app 比 db 先啟動完成',
+                    'app 嘗試連 DB 但 DB 還在初始化，連線失敗',
+                  ]},
+                  { heading: '解法', items: [
+                    'docker-compose.yml 設定 depends_on + condition: service_healthy',
+                    'DB 容器設定 healthcheck（如 pg_isready），確認 DB ready 後 app 才啟動',
+                    'app 端也建議實作連線重試（retry），雙重保護',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '舊容器關閉 / 使用者中斷', badges: ['RD', 'MIS'],
+              desc: '部署時舊容器還在處理請求就被殺掉',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    '使用者正在操作時部署新版，舊容器被強制關閉，使用者看到錯誤',
+                  ]},
+                  { heading: '解法', items: [
+                    'docker-compose.yml 設定 stop_grace_period（如 30s），讓舊容器有時間處理完手上的請求',
+                    'IIS 環境：啟用 Overlapped Recycling，新 process 啟動完成後才關舊的',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '磁碟空間：舊 Image 堆積', badges: ['MIS'],
+              desc: '每次 build 產生新 Image，不清理會塞滿磁碟',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    '每次 CI build 都會產生新的 Docker Image',
+                    '舊 Image 不刪除會持續佔用磁碟空間',
+                  ]},
+                  { heading: '解法', items: [
+                    'Pipeline 最後加一步 docker image prune -f 清理未使用的 Image',
+                    '或設定排程定期執行 docker system prune',
+                    'MIS 監控磁碟使用率，超過 85% 告警',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'Health Check 要驗實際功能', badges: ['RD'],
+              desc: 'HTTP 200 不代表服務真的正常',
+              detail: {
+                sections: [
+                  { heading: '問題', items: [
+                    '容器啟動了、HTTP 回 200，但 DB 連不上或快取沒初始化',
+                    '表面上部署成功，實際上功能異常',
+                  ]},
+                  { heading: '解法', items: [
+                    'Health Check endpoint 不只回 200，要實際驗證：DB 連線正常、關鍵 API 可回應',
+                    'docker-compose.yml 的 healthcheck 使用這個 endpoint',
+                    'Pipeline 部署後也用這個 endpoint 驗證',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: 'IIS 特有問題：檔案鎖定與 web.config', badges: ['MIS'],
+              desc: '僅適用 IIS 環境（非 Docker）的注意事項',
+              detail: {
+                sections: [
+                  { heading: '檔案鎖定', items: [
+                    '.NET 的 DLL 正在執行時無法覆蓋',
+                    '解法：MSDeploy 會自動處理 App Pool 停止/啟動，或 Pipeline 先停 App Pool 再部署',
+                  ]},
+                  { heading: 'web.config 覆蓋', items: [
+                    '各環境的 web.config 設定不同（DB 連線字串、API URL 等）',
+                    '自動部署時不能直接覆蓋，否則會用到錯誤的設定',
+                    '解法：web.config 加入 .gitignore，改用環境變數或 appsettings.{env}.json 管理差異',
+                  ]},
                 ],
               },
             },
