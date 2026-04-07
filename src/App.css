@@ -1034,4 +1034,51 @@ h1 {
   .pentest-phases {
     grid-template-columns: repeat(2, 1fr);
   }
+
+}
+
+/* ====== FAQ PANEL ====== */
+.flow-faq {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: #f9f9f9;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+}
+
+.flow-faq-q {
+  font-size: 12px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 6px;
+  padding-left: 18px;
+  position: relative;
+}
+
+.flow-faq-q::before {
+  content: 'Q';
+  position: absolute;
+  left: 0;
+  color: #c00;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.flow-faq-a {
+  font-size: 11px;
+  color: #555;
+  line-height: 1.6;
+  padding-left: 18px;
+  position: relative;
+}
+
+.flow-faq-a::before {
+  content: 'A';
+  position: absolute;
+  left: 0;
+  color: #06c;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
 }

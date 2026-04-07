@@ -5,7 +5,7 @@ import DetailPanel from './components/DetailPanel'
 import SidePanel from './components/SidePanel'
 import { stages } from './data/stages'
 
-type PanelId = 'rules' | 'pain' | 'appendix' | null
+type PanelId = 'rules' | 'pain' | 'appendix' | 'flowchart' | null
 
 export default function App() {
   const [activeStage, setActiveStage] = useState(0)

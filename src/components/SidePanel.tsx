@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { painPointsData, appendixData } from '../data/panels'
 import type { PainPointSection, AppendixSection } from '../data/panels'
 
-type PanelId = 'rules' | 'pain' | 'appendix' | null
+type PanelId = 'rules' | 'pain' | 'appendix' | 'flowchart' | null
 
 type Props = {
   activePanel: PanelId
@@ -277,6 +277,43 @@ function AppendixSectionComponent({ section }: { section: AppendixSection }) {
   return null
 }
 
+type FAQ = {
+  q: string
+  a: string
+}
+
+const faqs: FAQ[] = [
+  { q: 'DB 是官方 Image，app 的 migration 怎麼改 DB？', a: 'app 容器透過 DB 連線執行 SQL 指令修改 schema，跟用 SSMS 連 DB 一樣。一容器一行程不影響，業界標準做法。' },
+  { q: 'Migration script 打包在 Image 裡就會自動跑嗎？', a: '不會。需要觸發機制：Dev 用 Entrypoint（容器啟動自動跑），Staging/Prod 用 Pipeline step（部署前先跑，失敗不繼續）。' },
+  { q: 'Volume 內容變更時自動部署改不到？', a: 'DB schema 變更透過 Migration 處理（可自動化）。上傳檔案類 Volume 各環境各自維護，不在自動部署範圍，有變更須列交付物。' },
+  { q: '環境變數新增了但伺服器沒更新？', a: 'RD 交付時附「環境變數異動清單」，MIS 手動更新。自動部署不會同步 .env。' },
+  { q: 'IIS 需要停機才能更新嗎？', a: '不需要。IIS 支援 Overlapped Recycling。用 MSDeploy 或 robocopy 部署，App Pool 自動 recycle。' },
+  { q: '.NET DLL 被鎖定無法覆蓋？', a: 'MSDeploy 會自動處理 App Pool 停止/啟動。或在 Pipeline 先停 App Pool 再部署再啟動。' },
+  { q: 'web.config 被覆蓋怎麼辦？', a: 'web.config 加入 .gitignore，改用環境變數或 appsettings.{env}.json 管理各環境差異。' },
+  { q: '舊 Docker Image 會塞滿磁碟嗎？', a: 'Pipeline 最後加 docker image prune -f 清理。MIS 監控磁碟使用率 > 85% 告警。' },
+  { q: 'Health Check 回 200 就代表正常嗎？', a: '不夠。HC endpoint 要驗 DB 連線 + 關鍵 API 可回應，不只是回 200。' },
+  { q: 'Runner 是什麼？', a: '安裝在內網 VM 上的背景服務，主動向 GitHub poll CI/CD 任務。MIS 安裝一次，之後 RD push 就自動跑。不需開 inbound port。' },
+]
+
+function FAQPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="rules-panel open">
+      <div className="rules-panel-header">
+        <h3>常見問題</h3>
+        <button className="rules-panel-close" onClick={onClose}>x</button>
+      </div>
+      <div style={{ overflowY: 'auto', padding: '0 20px' }}>
+        {faqs.map((faq) => (
+          <div key={faq.q} className="flow-faq">
+            <div className="flow-faq-q">{faq.q}</div>
+            <div className="flow-faq-a">{faq.a}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AppendixPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="rules-panel open" id="appendixPanel">
@@ -301,6 +338,12 @@ export default function SidePanel({ activePanel, onToggle, onClose }: Props) {
       <div className="side-toggles">
         <div
           className="side-toggle"
+          onClick={() => onToggle(activePanel === 'flowchart' ? null : 'flowchart')}
+        >
+          常見問題
+        </div>
+        <div
+          className="side-toggle"
           onClick={() => onToggle(activePanel === 'appendix' ? null : 'appendix')}
         >
           關鍵規則
@@ -320,6 +363,7 @@ export default function SidePanel({ activePanel, onToggle, onClose }: Props) {
 
       {activePanel === 'pain' && <PainPanel onClose={onClose} />}
       {activePanel === 'appendix' && <AppendixPanel onClose={onClose} />}
+      {activePanel === 'flowchart' && <FAQPanel onClose={onClose} />}
     </>
   )
 }
