@@ -148,6 +148,198 @@ export type Stage = {
 
 export const stages: Stage[] = [
   {
+    id: 'project-init',
+    title: '專案啟動',
+    owner: ['RD', 'MIS'],
+    note: '新專案或新站台需求的前置作業。RD 提出申請，MIS 配發環境資源，完成後才進入開發階段。',
+    tabs: [
+      {
+        id: 'init-flow',
+        label: '流程',
+        content: {
+          kind: 'steps',
+          steps: [
+            { title: 'RD 提出新站台 / 新專案申請', badges: ['RD'], desc: '填寫環境申請表，送交 MIS 審核',
+              detail: {
+                sections: [],
+                autoTable: [
+                  { type: '項目', who: '填寫說明', how: '範例' },
+                  { type: '專案名稱 / 站台名稱', who: '必填', how: '產品展示平台' },
+                  { type: '用途說明', who: '必填，選擇類型', how: '產品系統 / Demo 站 / 內部工具 / API 服務' },
+                  { type: '部署方式', who: '預設 Docker，舊系統維護可選 IIS', how: 'Docker（預設）/ K8s / IIS（僅舊系統）' },
+                  { type: '所需環境', who: '必填，可複選', how: 'Dev / Staging / Production' },
+                  { type: '技術棧（含版本）', who: '必填', how: '.NET 8 / Node.js 20' },
+                  { type: 'DB 需求', who: '選填，註明類型', how: 'SQL Server / PostgreSQL / MySQL / 不需要' },
+                  { type: 'Volume 需求', who: '選填，列出用途', how: '上傳檔案目錄 / SSL 憑證 / 不需要' },
+                  { type: 'Port 號', who: 'MIS 統一配發，RD 不需填寫', how: '由 MIS 配發' },
+                  { type: '存取權限', who: '必填', how: '僅內網 / 特定 IP / 對外' },
+                  { type: 'SSL 憑證', who: '選填，附域名', how: 'demo.company.com' },
+                  { type: 'GitHub Repo', who: '必填，MIS 需註冊 Runner', how: 'github.com/org/repo' },
+                ],
+              },
+            },
+            { title: 'MIS 審核申請並配發資源', badges: ['MIS'], desc: '確認可行性，配發 Port、環境、權限',
+              detail: {
+                sections: [
+                  { heading: 'MIS 須完成項目', items: [
+                    '配發 Port 號並更新 Port 對照表',
+                    '建立環境（IIS 站台 / Docker Host / K8s Namespace）',
+                    '建立 DB 實例（如需要）並提供連線資訊',
+                    '建立 Volume 目錄並設定權限（如需要）',
+                    '設定 Reverse Proxy / DNS / Binding',
+                    '設定防火牆規則',
+                    '安裝 / 註冊 Self-hosted Runner（如該 Repo 尚未設定）',
+                    '安裝所需 SDK（版本由 RD 指定）',
+                    'SSL 憑證申請與安裝（如需要）',
+                  ]},
+                ],
+              },
+            },
+            { title: 'MIS 回覆環境資訊給 RD', badges: ['MIS'], desc: '提供 RD 開發所需的所有環境資訊',
+              detail: {
+                sections: [
+                  { heading: 'MIS 須回覆', items: [
+                    '配發的 Port 號（各環境）',
+                    'DB 連線資訊（Host / Port / 帳號，密碼另行提供）',
+                    'IIS 站台實體路徑 / Docker Host IP / K8s Namespace',
+                    'Volume 掛載路徑',
+                    'Runner 狀態（已註冊 / 已上線）',
+                    '域名 / SSL 憑證狀態',
+                    '存取方式（內網 URL / VPN）',
+                  ]},
+                ],
+              },
+            },
+            { title: 'RD 確認環境可用', badges: ['RD'], desc: '驗證環境連線正常，開始進入開發階段',
+              detail: {
+                sections: [
+                  { heading: 'RD 驗證項目', items: [
+                    'Runner 可正常執行（push 測試 commit 驗證）',
+                    'DB 可連線',
+                    'IIS / Docker / K8s 環境可存取',
+                    '自動部署流程可運作（撰寫 Workflow 並測試）',
+                  ]},
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'init-deploy-type',
+        label: '部署方式選擇',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '依專案性質選擇部署方式', badges: ['RD', 'MIS'],
+              desc: '三種部署方式各有適用場景，RD 在申請時選擇，MIS 依選擇準備環境',
+              detail: {
+                sections: [],
+                autoTable: [
+                  { type: '部署方式', who: '適用場景', how: 'MIS 準備工作' },
+                  { type: 'Docker（預設）', who: '新系統一律使用，快速建站、環境一致', how: '確認 Docker Host 可用 + 配發 Port + 建立 Volume 目錄' },
+                  { type: 'K8s', who: '多容器系統、需要自動擴展、微服務架構', how: '建立 Namespace + 設定 Ingress + 配發資源配額' },
+                  { type: 'IIS（僅舊系統）', who: '既有 .NET 系統維護，不適用新專案', how: '建立 IIS 站台 + App Pool + Binding + 安裝 SDK' },
+                ],
+                notes: [
+                  '新系統預設使用 Docker，視規模決定是否需要 K8s',
+                  '舊系統維持 IIS，不強制遷移',
+                  '部署方式一旦確定，後續 Dev / Staging / Production 三環境統一使用相同方式',
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        id: 'init-checklist',
+        label: '檢核清單',
+        content: {
+          kind: 'stage-checklist',
+          columns: ['#', '項目', '負責', '標準'],
+          rows: [
+            { num: '1', item: 'RD 環境申請表已送出', owner: ['RD'], standard: '所有欄位填寫完整' },
+            { num: '2', item: 'MIS 已配發 Port 號', owner: ['MIS'], standard: '更新至 Port 對照表' },
+            { num: '3', item: '環境已建立（IIS / Docker / K8s）', owner: ['MIS'], standard: '可存取' },
+            { num: '4', item: 'DB 已建立（如需要）', owner: ['MIS'], standard: '連線資訊已提供' },
+            { num: '5', item: 'Volume 目錄已建立（如需要）', owner: ['MIS'], standard: '路徑與權限已設定' },
+            { num: '6', item: 'Runner 已註冊並上線', owner: ['MIS'], standard: 'GitHub 顯示 Idle' },
+            { num: '7', item: 'SDK 已安裝', owner: ['MIS'], standard: '版本與 RD 指定一致' },
+            { num: '8', item: 'Reverse Proxy / DNS 已設定', owner: ['MIS'], standard: '域名可解析' },
+            { num: '9', item: 'MIS 已回覆環境資訊', owner: ['MIS'], standard: 'RD 已收到完整資訊' },
+            { num: '10', item: 'RD 驗證環境可用', owner: ['RD'], standard: '自動部署測試通過' },
+          ],
+        },
+      },
+      {
+        id: 'init-tracking',
+        label: '進度追蹤',
+        content: {
+          kind: 'steps',
+          steps: [
+            {
+              title: '現階段：Teams 頻道追蹤', badges: ['RD', 'MIS'],
+              desc: '在 Teams 指定頻道發送申請，MIS 回覆進度，所有紀錄留在對話串中',
+              detail: {
+                sections: [
+                  { heading: '流程', items: [
+                    'RD 在 Teams 指定頻道發送申請訊息，使用固定格式（見下方模板）',
+                    'MIS 在同一對話串回覆「已收到，預計 MM/DD 完成」',
+                    'MIS 每完成一個項目在對話串更新進度',
+                    '全部完成後 MIS 在對話串回覆完整環境資訊',
+                    'RD 驗證通過後回覆「已確認，環境可用」',
+                  ]},
+                  { heading: 'Teams 申請訊息模板', items: [
+                    '[環境申請] 專案名稱',
+                    '用途：（產品系統 / Demo 站 / 內部工具 / API 服務）',
+                    '部署方式：（IIS / Docker / K8s）',
+                    '所需環境：（Dev / Staging / Production）',
+                    '技術棧：（.NET 8 / Node.js 20 等）',
+                    'DB：（SQL Server / PostgreSQL / MySQL / 不需要）',
+                    'Volume：（需要 / 不需要，如需要請列出用途）',
+                    'Port：（由 MIS 配發）',
+                    '存取權限：（僅內網 / 特定 IP / 對外）',
+                    'SSL 憑證：（需要 / 不需要，如需要請附域名）',
+                    'GitHub Repo：（repo 網址）',
+                  ]},
+                  { heading: 'MIS 回覆環境資訊模板', items: [
+                    '配發 Port 號：（各環境）',
+                    'DB 連線：（Host / Port / DB Name / 帳號）',
+                    '站台路徑 / Docker Host / K8s Namespace：',
+                    'Volume 路徑：',
+                    'Runner 狀態：（已上線）',
+                    '域名 / URL：',
+                    '備注：',
+                  ]},
+                ],
+              },
+            },
+            {
+              title: '未來：內部專案管理系統', badges: ['RD', 'MIS'],
+              desc: '待內部專案管理系統上線後，改用系統開需求單追蹤',
+              detail: {
+                sections: [
+                  { heading: '轉移條件', items: [
+                    '內部專案管理系統已上線且 MIS 可使用',
+                    '系統支援需求單建立、狀態追蹤、通知功能',
+                    'RD 與 MIS 皆完成系統教育訓練',
+                  ]},
+                  { heading: '轉移後的好處', items: [
+                    '自動通知：申請送出後 MIS 自動收到通知，狀態變更時 RD 自動收到通知',
+                    '進度可視：所有申請的狀態一目了然',
+                    '歷史查詢：可回溯所有環境申請紀錄與配發資訊',
+                    '與開發需求串接：環境申請可關聯到對應的開發需求',
+                  ]},
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
     id: 'dev',
     title: '開發階段',
     owner: ['RD'],
@@ -474,6 +666,7 @@ export const stages: Stage[] = [
                   ]},
                 ],
                 autoTable: [
+                  { type: '項目', who: '負責', how: '說明' },
                   { type: 'Runner 安裝', who: 'MIS', how: '在內網 VM 執行 GitHub 提供的安裝腳本' },
                   { type: 'Runner 註冊', who: 'MIS', how: '將 Runner 註冊到 GitHub repo 或 org' },
                   { type: 'Workflow 撰寫', who: 'RD', how: '定義 CI/CD Pipeline YAML' },
@@ -836,6 +1029,7 @@ export const stages: Stage[] = [
               desc: '各環境的定位、部署規則與權限',
               detail: {
                 autoTable: [
+                  { type: '環境', who: '部署權限', how: '說明' },
                   { type: 'Dev', who: 'RD 自由推版', how: 'push to develop 自動部署，開發測試用' },
                   { type: 'Staging', who: 'MIS 部署', how: 'RD 交付打包檔，MIS 執行部署，配置與 Prod 一致' },
                   { type: 'Production', who: 'MIS 部署', how: 'RD 送申請，MIS 審核後以與 Staging 相同流程部署' },
@@ -904,6 +1098,7 @@ export const stages: Stage[] = [
                   { heading: '本次變更特定項目', items: ['依 CHANGELOG 逐項驗證'] },
                 ],
                 autoTable: [
+                  { type: '驗收類型', who: '執行者', how: '方式' },
                   { type: 'API 功能正確性', who: 'Claude Code', how: '自動寫測試 + 執行' },
                   { type: '權限控制', who: 'Claude Code', how: '自動測試各角色存取' },
                   { type: '表單流程', who: 'Claude Code', how: 'Playwright 自動操作' },

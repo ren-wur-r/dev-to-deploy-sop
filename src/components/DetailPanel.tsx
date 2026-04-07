@@ -41,14 +41,13 @@ function StepDetailPanel({ detail }: { detail: StepDetail }) {
       ))}
       {detail.autoTable && (
         <div style={{ marginTop: 16 }}>
-          <strong style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>自動化驗收分工</strong>
           <table className="tbl">
-            <thead><tr><th>驗收類型</th><th>執行者</th><th>方式</th></tr></thead>
+            <thead><tr><th>{detail.autoTable[0].type}</th><th>{detail.autoTable[0].who}</th><th>{detail.autoTable[0].how}</th></tr></thead>
             <tbody>
-              {detail.autoTable.map((row) => (
+              {detail.autoTable.slice(1).map((row) => (
                 <tr key={row.type}>
                   <td>{row.type}</td>
-                  <td><span className="b">{row.who}</span></td>
+                  <td>{row.who}</td>
                   <td>{row.how}</td>
                 </tr>
               ))}
